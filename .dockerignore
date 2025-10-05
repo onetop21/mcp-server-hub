@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Build outputs
+dist
+
+# Tests
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+coverage
+
+# Development files
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+
+# Documentation
+*.md
+!README.md
+docs
+.kiro
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+.npm
+.eslintcache
+
