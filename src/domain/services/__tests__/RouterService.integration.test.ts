@@ -256,11 +256,22 @@ describe('RouterService Integration Tests', () => {
       }
     };
 
+    // Create mock load balancer
+    const mockLoadBalancer = {
+      selectServer: jest.fn().mockImplementation(async (servers) => servers[0]),
+      incrementConnections: jest.fn(),
+      decrementConnections: jest.fn(),
+      recordSuccess: jest.fn(),
+      recordFailure: jest.fn(),
+      getCircuitBreakerStatus: jest.fn().mockResolvedValue({ state: 'closed' })
+    };
+
     routerService = new RouterService(
       mockServerRepo,
       mockEndpointRepo,
       mockGroupRepo,
-      mockProtocolAdapter
+      mockProtocolAdapter,
+      mockLoadBalancer as any
     );
   });
 

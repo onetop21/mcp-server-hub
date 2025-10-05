@@ -6,12 +6,16 @@ export * from './IRouterService';
 export * from './IEndpointService';
 export * from './IUsageTrackingService';
 export * from './IPermissionService';
+export { ILoadBalancerService, LoadBalancingStrategy, CircuitBreakerState } from './ILoadBalancerService';
+export * from './IMarketplaceService';
 
-// Service implementations (only export the classes, not the interfaces to avoid conflicts)
-export { UserManagementService } from './UserManagementService';
-export { ServerRegistryService } from './ServerRegistryService';
-export { ProtocolAdapterService } from './ProtocolAdapterService';
-export { RouterService } from './RouterService';
-export { UsageTrackingService } from './UsageTrackingService';
-export { PermissionService } from './PermissionService';
-export { EndpointService } from './EndpointService';
+// Service implementations
+export * from './UserManagementService';
+export * from './ServerRegistryService';
+export * from './ProtocolAdapterService';
+export * from './RouterService';
+export * from './EndpointService';
+export * from './UsageTrackingService';
+export * from './PermissionService';
+export * from './LoadBalancerService';
+export * from './MarketplaceService';

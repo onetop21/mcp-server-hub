@@ -179,6 +179,13 @@ class ApiKeyRepository extends BaseRepository_1.BaseRepository {
         return result.rows.length > 0;
     }
     /**
+     * Validate an API key
+     */
+    async validateApiKey(key) {
+        const apiKey = await this.findByKey(key);
+        return apiKey !== null;
+    }
+    /**
      * Hash an API key for secure storage
      */
     hashKey(key) {

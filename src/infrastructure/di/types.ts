@@ -8,6 +8,8 @@ export const TYPES = {
   EndpointService: Symbol.for('EndpointService'),
   UsageTrackingService: Symbol.for('UsageTrackingService'),
   PermissionService: Symbol.for('PermissionService'),
+  LoadBalancerService: Symbol.for('LoadBalancerService'),
+  MarketplaceService: Symbol.for('MarketplaceService'),
 
   // Repositories
   UserRepository: Symbol.for('UserRepository'),
@@ -15,6 +17,7 @@ export const TYPES = {
   ApiKeyRepository: Symbol.for('ApiKeyRepository'),
   EndpointRepository: Symbol.for('EndpointRepository'),
   GroupRepository: Symbol.for('GroupRepository'),
+  MarketplaceRepository: Symbol.for('MarketplaceRepository'),
 
   // Infrastructure
   DatabaseConnection: Symbol.for('DatabaseConnection'),

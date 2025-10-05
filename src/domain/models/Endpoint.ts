@@ -23,9 +23,13 @@ export interface ServerGroup {
 
 export interface GroupConfig {
   name: string;
-  description: string;
+  description?: string;
+  servers?: string[];
   serverIds?: string[];
+  routingPolicy?: RoutingPolicy;
 }
+
+export type RoutingPolicy = 'round-robin' | 'random' | 'priority';
 
 export interface RoutingRule {
   id: string;

@@ -1,12 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RedisConnection = void 0;
-const redis_1 = require("redis");
+// Conditional import to avoid loading Redis when not needed
+let createClient;
+let RedisClientType;
+try {
+    const redis = require('redis');
+    createClient = redis.createClient;
+    RedisClientType = redis.RedisClientType;
+}
+catch (error) {
+    console.warn('Redis module not available:', error);
+}
 class RedisConnection {
     constructor(config) {
         this.client = null;
         this.isConnected = false;
         this.config = config;
+        if (!createClient) {
+            throw new Error('Redis client not available - please install redis package');
+        }
     }
     /**
      * Connect to Redis
@@ -19,7 +32,7 @@ class RedisConnection {
             const url = this.config.password
                 ? `redis://:${this.config.password}@${this.config.host}:${this.config.port}/${this.config.db || 0}`
                 : `redis://${this.config.host}:${this.config.port}/${this.config.db || 0}`;
-            this.client = (0, redis_1.createClient)({
+            this.client = createClient({
                 url,
                 socket: {
                     connectTimeout: this.config.connectTimeout || 10000,

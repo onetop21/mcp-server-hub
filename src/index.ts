@@ -1,56 +1,33 @@
 import 'reflect-metadata';
-import { container } from './infrastructure/di/container';
+import { createApp } from './infrastructure/api/app';
+import { createContainer } from './infrastructure/di/container';
 
-// Application entry point
-export class Application {
-  private container = container;
+/**
+ * MCP Hub Router Entry Point
+ */
+async function main() {
+  try {
+    console.log('Starting MCP Hub Router...');
 
-  public async start(): Promise<void> {
-    console.log('MCP Hub Router starting...');
-    
-    // Initialize DI container and services
-    await this.container.initialize();
-    
-    // TODO: Initialize HTTP server in future tasks
-    // await this.startHttpServer();
-    
-    console.log('MCP Hub Router started successfully');
-  }
+    // Initialize DI container
+    const container = createContainer();
+    console.log('✓ DI Container initialized');
 
-  public async stop(): Promise<void> {
-    console.log('MCP Hub Router stopping...');
-    
-    // Cleanup resources
-    await this.container.cleanup();
-    
-    // TODO: Stop HTTP server in future tasks
-    // await this.stopHttpServer();
-    
-    console.log('MCP Hub Router stopped');
-  }
-}
+    // Create Express app
+    const app = createApp(container);
+    console.log('✓ Express app created');
 
-// Start application if this file is run directly
-if (require.main === module) {
-  const app = new Application();
-  
-  app.start().catch((error) => {
-    console.error('Failed to start application:', error);
+    // Start server
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+      console.log(`✓ Server listening on port ${port}`);
+      console.log(`  Health: http://localhost:${port}/health`);
+      console.log(`  API: http://localhost:${port}/api`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
     process.exit(1);
-  });
-
-  // Graceful shutdown
-  process.on('SIGINT', async () => {
-    await app.stop();
-    process.exit(0);
-  });
-
-  process.on('SIGTERM', async () => {
-    await app.stop();
-    process.exit(0);
-  });
+  }
 }
 
-export { container } from './infrastructure/di/container';
-export * from './domain/models';
-export * from './domain/services';
+main();

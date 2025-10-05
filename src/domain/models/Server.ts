@@ -31,7 +31,7 @@ export interface ServerConfig {
 
 export interface StdioConfig {
   command: string;
-  args: string[];
+  args?: string[];
   env?: Record<string, string>;
 }
 
@@ -41,7 +41,8 @@ export interface SseConfig {
 }
 
 export interface HttpConfig {
-  baseUrl: string;
+  url: string;
+  baseUrl?: string;
   headers?: Record<string, string>;
 }
 

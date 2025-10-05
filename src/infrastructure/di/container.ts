@@ -9,6 +9,8 @@ import { PermissionService } from '../../domain/services/PermissionService';
 import { ServerRegistryService } from '../../domain/services/ServerRegistryService';
 import { EndpointService } from '../../domain/services/EndpointService';
 import { ProtocolAdapterService } from '../../domain/services/ProtocolAdapterService';
+import { LoadBalancerService } from '../../domain/services/LoadBalancerService';
+import { RouterService } from '../../domain/services/RouterService';
 
 /**
  * Simple DI Container for MCP Hub Router
@@ -90,6 +92,11 @@ export class DIContainer {
       this.bind(TYPES.GroupRepository, serverGroupRepository);
       this.bind(TYPES.EndpointRepository, endpointRepository);
 
+      // Initialize MarketplaceRepository
+      const { MarketplaceRepository } = await import('../repositories/MarketplaceRepository');
+      const marketplaceRepository = new MarketplaceRepository(dbConnection);
+      this.bind(TYPES.MarketplaceRepository, marketplaceRepository);
+
       // Initialize utilities
       const passwordHasher = new PasswordHasher();
       const tokenGenerator = new TokenGenerator();
@@ -117,6 +124,11 @@ export class DIContainer {
       const serverRegistryService = new ServerRegistryService(serverRepository, serverGroupRepository);
       this.bind(TYPES.ServerRegistryService, serverRegistryService);
 
+      // Initialize MarketplaceService
+      const { MarketplaceService } = await import('../../domain/services/MarketplaceService');
+      const marketplaceService = new MarketplaceService(marketplaceRepository, userManagementService);
+      this.bind(TYPES.MarketplaceService, marketplaceService);
+
       const endpointService = new EndpointService(
         endpointRepository,
         serverGroupRepository,
@@ -127,6 +139,57 @@ export class DIContainer {
 
       const protocolAdapterService = new ProtocolAdapterService();
       this.bind(TYPES.ProtocolAdapterService, protocolAdapterService);
+
+      /**
+       * ROUTER SERVICE INITIALIZATION
+       * ==============================
+       * 
+       * ARCHITECTURE DECISION: Simplified Design (No Load Balancing)
+       * 
+       * Why LoadBalancerService is NOT initialized:
+       * -------------------------------------------
+       * 1. MCP servers require personal credentials (API keys, tokens)
+       *    → Each user runs their own server instances
+       *    → Cannot be shared between users
+       * 
+       * 2. Typical usage: 1 server per user per tool type
+       *    → No need for load balancing
+       *    → No need for circuit breakers
+       * 
+       * 3. MCP servers are stateless
+       *    → Simple first-server selection works fine
+       *    → Predictable and easy to debug
+       * 
+       * 4. Users can reuse servers across multiple projects
+       *    → One setup, use everywhere
+       *    → No performance issues with this approach
+       * 
+       * When to enable LoadBalancerService:
+       * -----------------------------------
+       * Only when team/organization shared servers are needed:
+       * - Shared API keys (company license)
+       * - High concurrent usage (100+ users)
+       * - Need for high availability
+       * 
+       * How to enable:
+       * -------------
+       * Uncomment these 3 lines:
+       * 
+       * const loadBalancerService = new LoadBalancerService();
+       * this.bind(TYPES.LoadBalancerService, loadBalancerService);
+       * // Then pass loadBalancerService as 5th parameter below
+       * 
+       * All load balancing features will automatically activate!
+       * See: docs/LoadBalancing.md for details
+       */
+      const routerService = new RouterService(
+        serverRepository,
+        endpointRepository,
+        serverGroupRepository,
+        protocolAdapterService
+        // loadBalancerService intentionally omitted - see comment above
+      );
+      this.bind(TYPES.RouterService, routerService);
 
       this.initialized = true;
       console.log('DI Container initialized successfully');
@@ -206,6 +269,90 @@ export class DIContainer {
       console.error('Error during container cleanup:', error);
     }
   }
+}
+
+/**
+ * Create and initialize DI container (non-async version for sync usage)
+ */
+export function createContainer(): DIContainer {
+  const container = DIContainer.getInstance();
+  
+  // Create mock instances for now
+  const dbConnection = new DatabaseConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    database: process.env.DB_NAME || 'mcp_hub',
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    maxConnections: 10
+  });
+
+  const userRepository = new UserRepository(dbConnection);
+  const apiKeyRepository = new ApiKeyRepository(dbConnection);
+  const serverRepository = new ServerRepository(dbConnection);
+  const serverGroupRepository = new ServerGroupRepository(dbConnection);
+  const endpointRepository = new EndpointRepository(dbConnection);
+
+  const passwordHasher = new PasswordHasher();
+  const tokenGenerator = new TokenGenerator();
+  const rateLimiter = new RateLimiter();
+  const permissionService = new PermissionService();
+
+  const userManagementService = new UserManagementService(
+    userRepository,
+    apiKeyRepository,
+    passwordHasher,
+    tokenGenerator,
+    rateLimiter,
+    undefined, // No usage tracking for now
+    permissionService
+  );
+
+  const serverRegistryService = new ServerRegistryService(serverRepository, serverGroupRepository);
+
+  const endpointService = new EndpointService(
+    endpointRepository,
+    serverGroupRepository,
+    apiKeyRepository,
+    tokenGenerator
+  );
+
+  const protocolAdapterService = new ProtocolAdapterService();
+
+  const routerService = new RouterService(
+    serverRepository,
+    endpointRepository,
+    serverGroupRepository,
+    protocolAdapterService
+  );
+
+  // Initialize MarketplaceRepository and MarketplaceService
+  const { MarketplaceRepository } = require('../repositories/MarketplaceRepository');
+  const marketplaceRepository = new MarketplaceRepository(dbConnection);
+  
+  const { MarketplaceService } = require('../../domain/services/MarketplaceService');
+  const marketplaceService = new MarketplaceService(marketplaceRepository, userManagementService);
+
+  // Bind services
+  container.bind(TYPES.DatabaseConnection, dbConnection);
+  container.bind(TYPES.UserRepository, userRepository);
+  container.bind(TYPES.ApiKeyRepository, apiKeyRepository);
+  container.bind(TYPES.ServerRepository, serverRepository);
+  container.bind(TYPES.GroupRepository, serverGroupRepository);
+  container.bind(TYPES.EndpointRepository, endpointRepository);
+  container.bind(TYPES.MarketplaceRepository, marketplaceRepository);
+  container.bind(TYPES.PasswordHasher, passwordHasher);
+  container.bind(TYPES.TokenGenerator, tokenGenerator);
+  container.bind(TYPES.RateLimiter, rateLimiter);
+  container.bind(TYPES.PermissionService, permissionService);
+  container.bind(TYPES.UserManagementService, userManagementService);
+  container.bind(TYPES.ServerRegistryService, serverRegistryService);
+  container.bind(TYPES.EndpointService, endpointService);
+  container.bind(TYPES.ProtocolAdapterService, protocolAdapterService);
+  container.bind(TYPES.RouterService, routerService);
+  container.bind(TYPES.MarketplaceService, marketplaceService);
+
+  return container;
 }
 
 // Export the container instance for direct access if needed

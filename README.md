@@ -53,27 +53,77 @@ src/
 └── index.ts            # Application entry point
 ```
 
-### Key Features
+### 🎯 Quick Start
 
-- **Multi-tenant Architecture**: Support for multiple users and organizations
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Build
+npm run build
+
+# 3. Start server
+npm run dev
+```
+
+Server will start on `http://localhost:3000`
+
+👉 [Quick Start Guide](./docs/Quick-Start.md) | [API Reference](./docs/API-Reference.md)
+
+## Key Features
+
+- **Individual Server Management**: Each user runs their own MCP servers with personal credentials
+- **Multi-Project Reusability**: One server setup, use across multiple projects
 - **Protocol Adapters**: STDIO, SSE, and HTTP protocol support
-- **Dynamic Routing**: Intelligent request routing and load balancing
+- **Stateless Design**: Simple, predictable, and maintainable architecture
 - **API Management**: API key generation and rate limiting
-- **Server Registry**: MCP server registration and management
+- **Server Registry**: Personal MCP server registration and management
+- **Namespace Routing**: Organized tool routing with namespace support
 
 ### Development Status
 
-✅ **Task 1 Complete**: Project foundation and core interfaces
+✅ **Tasks 1-10 Complete**: Core functionality implemented
 - TypeScript project initialization
 - Core domain models (User, Server, ApiKey, Endpoint)
-- Service interfaces (UserManagement, ServerRegistry, ProtocolAdapter, Router, Endpoint)
-- Dependency injection container setup
-
-🔄 **Next Tasks**:
+- Service interfaces and implementations
 - Database schema and repositories
-- Protocol adapters implementation
-- API endpoints
-- Authentication and authorization
+- User management and authentication
+- Usage tracking and rate limiting
+- Server registry and metadata management
+- Server groups and endpoint management
+- Protocol adapters (STDIO, SSE, HTTP)
+- Tool routing and namespace system
+
+✅ **Task 11 Modified**: Simplified architecture (Load balancing deferred)
+- Load balancing code implemented but **disabled by default** for simplicity
+- Focus on individual user servers with personal credentials
+- Stateless MCP server design for easy maintenance
+- Load balancing can be enabled in future for scale-out scenarios
+- See `docs/Architecture-Simplified.md` for details
+
+### Architecture Philosophy
+
+**Simplicity First:** MCP Hub Router prioritizes simplicity and maintainability over complex features.
+
+- 👤 **Individual Servers**: Each user runs their own MCP servers
+- 🔑 **Personal Credentials**: Servers use user's own API keys/tokens
+- ♻️ **Multi-Project Reuse**: One server → multiple projects
+- 📦 **Stateless Design**: No caching, predictable behavior
+- 🚀 **Future-Proof**: Can enable advanced features when needed
+
+See `docs/Architecture-Simplified.md` for detailed reasoning.
+
+🎉 **Completed Tasks**:
+- Task 1-11: Core infrastructure ✅
+- Task 12: Routing rules engine ✅
+- Task 13: REST API (User, Server, Health) ✅
+- Task 14: MCP protocol endpoints ✅
+- Task 15: Marketplace API ✅
+- Task 16: Health/Monitoring API ✅
+
+🔄 **Remaining Tasks**:
+- Task 17-20: Advanced features (dynamic config, logging, backup, dashboard)
+- Task 21-24: Testing, deployment, documentation
 
 ### WSL-Specific Notes
 

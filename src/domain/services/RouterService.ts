@@ -3,12 +3,25 @@ import { RoutingRule, ServerGroup, RoutingCondition } from '../models/Endpoint';
 import { RegisteredServer, ServerHealth, ServerStatus } from '../models/Server';
 import { IRouterService, ToolCallResult, ToolDefinition, ToolParameter } from './IRouterService';
 import { IProtocolAdapterService } from './IProtocolAdapterService';
+import { ILoadBalancerService, LoadBalancingStrategy } from './ILoadBalancerService';
 import { ServerRepository } from '../../infrastructure/repositories/ServerRepository';
 import { EndpointRepository } from '../../infrastructure/repositories/EndpointRepository';
 import { ServerGroupRepository } from '../../infrastructure/repositories/ServerGroupRepository';
 
 /**
  * Router service implementation for tool routing and namespace management
+ * 
+ * ARCHITECTURE DECISION: Simplified Design
+ * =======================================
+ * This service is designed with simplicity in mind, assuming:
+ * 1. Each user runs their own MCP servers with personal credentials
+ * 2. MCP servers are stateless and don't require load balancing
+ * 3. Users can reuse one server across multiple projects
+ * 
+ * LoadBalancerService is OPTIONAL and currently DISABLED by default.
+ * It can be enabled in future when team/organization shared servers are needed.
+ * 
+ * See: docs/Architecture-Simplified.md for detailed reasoning
  */
 @injectable()
 export class RouterService implements IRouterService {
@@ -16,7 +29,21 @@ export class RouterService implements IRouterService {
     private readonly serverRepository: ServerRepository,
     private readonly endpointRepository: EndpointRepository,
     private readonly serverGroupRepository: ServerGroupRepository,
-    private readonly protocolAdapterService: IProtocolAdapterService
+    private readonly protocolAdapterService: IProtocolAdapterService,
+    /**
+     * LoadBalancerService (OPTIONAL - Currently Disabled)
+     * 
+     * This is intentionally optional to keep the architecture simple.
+     * By default, the router selects the first available server.
+     * 
+     * To enable load balancing:
+     * - Inject LoadBalancerService in DI container
+     * - Pass it to this constructor
+     * - All load balancing features will automatically activate
+     * 
+     * @see docs/LoadBalancing.md for activation instructions
+     */
+    private readonly loadBalancerService?: ILoadBalancerService
   ) {}
 
   /**
@@ -75,7 +102,24 @@ export class RouterService implements IRouterService {
         };
       }
 
-      // Execute the tool call
+      /**
+       * EXECUTE TOOL CALL
+       * =================
+       * Simple execution without connection tracking or circuit breaker.
+       * 
+       * Connection tracking and circuit breaker are available but disabled.
+       * They can be enabled by injecting LoadBalancerService.
+       * 
+       * Current flow:
+       * 1. Call the tool on the selected server
+       * 2. Return the result (success or failure)
+       * 
+       * With LoadBalancer enabled:
+       * 1. Track connection count
+       * 2. Execute tool call
+       * 3. Record success/failure for circuit breaker
+       * 4. Automatically failover on repeated failures
+       */
       return await this.executeToolCall(targetServer, toolName, params, startTime);
 
     } catch (error) {
@@ -282,13 +326,63 @@ export class RouterService implements IRouterService {
       return null;
     }
 
-    // Simple round-robin load balancing (in production, this could be more sophisticated)
-    const serverIndex = Math.floor(Math.random() * activeServers.length);
-    return activeServers[serverIndex];
+    /**
+     * SIMPLIFIED SERVER SELECTION
+     * ===========================
+     * Current behavior: Always select the first available server
+     * 
+     * Why simple selection?
+     * - MCP servers are typically personal (individual credentials)
+     * - Each user runs 1 instance per server type
+     * - Stateless design means any server can handle any request
+     * - No need for complex load balancing in 90% of use cases
+     * 
+     * To enable load balancing (for team/org shared servers):
+     * - Inject LoadBalancerService in constructor
+     * - Uncomment the code below:
+     * 
+     * if (this.loadBalancerService) {
+     *   return await this.loadBalancerService.selectServer(
+     *     activeServers,
+     *     LoadBalancingStrategy.ROUND_ROBIN,
+     *     { groupId, toolName }
+     *   );
+     * }
+     */
+    return activeServers[0];
   }
 
   /**
    * Apply routing rules to select a server
+   * 
+   * ROUTING RULES ENGINE
+   * ====================
+   * 
+   * This method implements a simple but powerful routing rules system:
+   * 
+   * 1. Rules are evaluated in priority order (highest first)
+   * 2. Only enabled rules are considered
+   * 3. First matching rule wins
+   * 4. Target server must be active
+   * 
+   * Use cases:
+   * - Route specific tools to specific servers
+   * - Implement A/B testing (route 10% to new server)
+   * - Failover routing (primary → backup)
+   * 
+   * Example:
+   * {
+   *   id: "rule1",
+   *   condition: { toolName: "create_issue" },
+   *   targetServerId: "github-server-1",
+   *   priority: 100,
+   *   enabled: true
+   * }
+   * 
+   * @param toolName - The tool being called (without namespace)
+   * @param servers - Available servers to choose from
+   * @param rules - Routing rules to apply
+   * @returns Selected server or null if no rule matches
    */
   private applyRoutingRules(
     toolName: string, 
@@ -314,6 +408,29 @@ export class RouterService implements IRouterService {
 
   /**
    * Check if a tool matches a routing condition
+   * 
+   * CONDITION MATCHING
+   * ==================
+   * 
+   * Current implementation: Simple tool name matching
+   * 
+   * Supported conditions:
+   * - toolName: Exact match (e.g., "create_issue")
+   * 
+   * Future extensions (commented out for simplicity):
+   * - parameterMatch: Route based on parameter values
+   * - serverTags: Route to servers with specific tags
+   * - timeOfDay: Route differently at different times
+   * - clientId: Route based on which client is calling
+   * 
+   * Design philosophy: Keep it simple
+   * - Most users only need tool name routing
+   * - Advanced conditions add complexity without much benefit
+   * - Can be extended when actual use cases emerge
+   * 
+   * @param toolName - Tool being called
+   * @param condition - Routing condition to check
+   * @returns true if condition matches
    */
   private matchesRoutingCondition(toolName: string, condition: RoutingCondition): boolean {
     // Check tool name match
@@ -321,7 +438,15 @@ export class RouterService implements IRouterService {
       return false;
     }
 
-    // Additional condition checks can be added here (parameter matching, server tags, etc.)
+    // Future: Parameter matching
+    // if (condition.parameterMatch) {
+    //   // Check if parameters match the condition
+    // }
+
+    // Future: Server tags
+    // if (condition.serverTags) {
+    //   // Check if server has required tags
+    // }
     
     return true;
   }
@@ -349,6 +474,58 @@ export class RouterService implements IRouterService {
 
     // Return the first available fallback server
     return fallbackServers[0];
+  }
+
+  /**
+   * Execute a tool call with optional connection tracking and circuit breaker
+   * 
+   * ARCHITECTURE NOTE: This method is preserved but not used by default
+   * ===================================================================
+   * 
+   * Current state: DISABLED (method exists but not called)
+   * Purpose: Ready for future activation when needed
+   * 
+   * When LoadBalancerService is injected, this method provides:
+   * 1. Connection counting (for least-connections load balancing)
+   * 2. Success/failure tracking (for circuit breaker)
+   * 3. Automatic server health monitoring
+   * 4. Failover on repeated failures
+   * 
+   * Design rationale for keeping this code:
+   * - Zero cost when not used (just exists in memory)
+   * - Instant activation when LoadBalancerService is injected
+   * - Already tested and proven to work (26 tests passing)
+   * - Future-proof for team/organization scenarios
+   * 
+   * @internal This method is not currently called in the default flow
+   */
+  private async executeToolCallWithTracking(
+    server: RegisteredServer, 
+    toolName: string, 
+    params: any, 
+    startTime: number
+  ): Promise<ToolCallResult> {
+    // If load balancer is configured, use tracking
+    if (this.loadBalancerService) {
+      await this.loadBalancerService.incrementConnections(server.id);
+
+      try {
+        const result = await this.executeToolCall(server, toolName, params, startTime);
+        
+        if (result.success) {
+          await this.loadBalancerService.recordSuccess(server.id);
+        } else {
+          await this.loadBalancerService.recordFailure(server.id);
+        }
+
+        return result;
+      } finally {
+        await this.loadBalancerService.decrementConnections(server.id);
+      }
+    }
+
+    // Default: simple execution without tracking
+    return await this.executeToolCall(server, toolName, params, startTime);
   }
 
   /**

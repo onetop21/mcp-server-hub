@@ -1,16 +1,18 @@
-import { 
+import type { 
   RegisteredServer, 
   ServerConfig, 
   ServerUpdate, 
-  ServerGroup, 
-  GroupConfig 
+  ServerGroup
 } from '../models';
+
+// Re-export GroupConfig from Endpoint models
+export type { GroupConfig } from '../models/Endpoint';
 
 export interface IServerRegistryService {
   /**
    * Register a new MCP server for a user
    */
-  registerServer(userId: string, serverConfig: ServerConfig & { name: string; namespace?: string }): Promise<RegisteredServer>;
+  registerServer(userId: string, serverConfig: ServerConfig & { name: string; namespace?: string; protocol?: 'stdio' | 'sse' | 'http' }): Promise<RegisteredServer>;
 
   /**
    * Update an existing server configuration
@@ -25,7 +27,7 @@ export interface IServerRegistryService {
   /**
    * Create a new server group
    */
-  createGroup(userId: string, groupConfig: GroupConfig): Promise<ServerGroup>;
+  createGroup(userId: string, groupConfig: import('../models/Endpoint').GroupConfig): Promise<ServerGroup>;
 
   /**
    * Assign a server to a group

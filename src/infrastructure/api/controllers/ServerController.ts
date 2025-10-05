@@ -1,258 +1,330 @@
 import { Response } from 'express';
-import { ServerRegistryService, ServerConfigValidationError } from '../../../domain/services/ServerRegistryService';
-import { ServerProtocol, ServerStatus } from '../../../domain/models/Server';
-import { container } from '../../di/container';
+import { DIContainer } from '../../di/container';
 import { TYPES } from '../../di/types';
-import { AuthenticatedRequest } from '../types';
+import { IServerRegistryService, IRouterService } from '../../../domain/services';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 /**
- * Request/Response types for server API
- */
-export interface RegisterServerRequest {
-  name: string;
-  protocol: ServerProtocol;
-  config: {
-    stdio?: {
-      command: string;
-      args: string[];
-      env?: Record<string, string>;
-    };
-    sse?: {
-      url: string;
-      headers?: Record<string, string>;
-    };
-    http?: {
-      baseUrl: string;
-      headers?: Record<string, string>;
-    };
-  };
-  namespace?: string;
-}
-
-export interface UpdateServerRequest {
-  name?: string;
-  config?: {
-    stdio?: {
-      command?: string;
-      args?: string[];
-      env?: Record<string, string>;
-    };
-    sse?: {
-      url?: string;
-      headers?: Record<string, string>;
-    };
-    http?: {
-      baseUrl?: string;
-      headers?: Record<string, string>;
-    };
-  };
-  namespace?: string;
-  status?: ServerStatus;
-}
-
-export interface ServerResponse {
-  id: string;
-  name: string;
-  protocol: ServerProtocol;
-  config: any;
-  namespace?: string;
-  status: ServerStatus;
-  lastHealthCheck: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * Server management REST API controller
+ * Server Controller
+ * Handles MCP server registration and management
  */
 export class ServerController {
-  private serverRegistryService: ServerRegistryService;
+  private container: DIContainer;
 
-  constructor() {
-    this.serverRegistryService = container.get<ServerRegistryService>(TYPES.ServerRegistryService);
+  constructor(container: DIContainer) {
+    this.container = container;
   }
 
   /**
-   * Register a new MCP server
+   * Register new server
    * POST /api/servers
    */
-  public registerServer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async registerServer(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id; // Assuming auth middleware sets req.user
-      if (!userId) {
-        res.status(401).json({ error: 'Authentication required' });
-        return;
-      }
+      const { name, protocol, config, namespace } = req.body;
 
-      const serverData: RegisterServerRequest = req.body;
-
-      // Validate required fields
-      if (!serverData.name || !serverData.protocol || !serverData.config) {
-        res.status(400).json({ 
-          error: 'Missing required fields: name, protocol, and config are required' 
+      // Validation
+      if (!name || !protocol || !config) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_INPUT',
+            message: 'Name, protocol, and config are required'
+          }
         });
         return;
       }
 
-      const registeredServer = await this.serverRegistryService.registerServer(userId, {
-        name: serverData.name,
-        protocol: serverData.protocol,
-        stdio: serverData.config.stdio,
-        sse: serverData.config.sse,
-        http: serverData.config.http,
-        namespace: serverData.namespace,
+      if (!['stdio', 'sse', 'http'].includes(protocol)) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_PROTOCOL',
+            message: 'Protocol must be stdio, sse, or http'
+          }
+        });
+        return;
+      }
+
+      const serverService = this.container.get<IServerRegistryService>(TYPES.ServerRegistryService);
+      const server = await serverService.registerServer(req.userId!, {
+        ...config,
+        name,
+        protocol,
+        namespace
       });
 
-      const response: ServerResponse = {
-        id: registeredServer.id,
-        name: registeredServer.name,
-        protocol: registeredServer.protocol,
-        config: registeredServer.config,
-        namespace: registeredServer.namespace,
-        status: registeredServer.status,
-        lastHealthCheck: registeredServer.lastHealthCheck.toISOString(),
-        createdAt: registeredServer.createdAt.toISOString(),
-        updatedAt: registeredServer.updatedAt.toISOString(),
-      };
-
-      res.status(201).json(response);
-    } catch (error) {
-      if (error instanceof ServerConfigValidationError) {
-        res.status(400).json({ 
-          error: error.message,
-          field: error.field 
+      res.status(201).json({
+        serverId: server.id,
+        name: server.name,
+        protocol: server.protocol,
+        namespace: server.namespace,
+        status: server.status,
+        createdAt: server.createdAt
+      });
+    } catch (error: any) {
+      if (error.message?.includes('already exists')) {
+        res.status(409).json({
+          error: {
+            code: 'SERVER_EXISTS',
+            message: error.message
+          }
         });
-      } else {
-        console.error('Error registering server:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return;
       }
+
+      console.error('Register server error:', error);
+      res.status(500).json({
+        error: {
+          code: 'REGISTRATION_FAILED',
+          message: 'Failed to register server'
+        }
+      });
     }
-  };
+  }
 
   /**
-   * Update an existing server
-   * PUT /api/servers/:id
-   */
-  public updateServer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-      const serverId = req.params.id;
-      const updates: UpdateServerRequest = req.body;
-
-      const updatedServer = await this.serverRegistryService.updateServer(serverId, updates);
-
-      const response: ServerResponse = {
-        id: updatedServer.id,
-        name: updatedServer.name,
-        protocol: updatedServer.protocol,
-        config: updatedServer.config,
-        namespace: updatedServer.namespace,
-        status: updatedServer.status,
-        lastHealthCheck: updatedServer.lastHealthCheck.toISOString(),
-        createdAt: updatedServer.createdAt.toISOString(),
-        updatedAt: updatedServer.updatedAt.toISOString(),
-      };
-
-      res.json(response);
-    } catch (error) {
-      if (error instanceof ServerConfigValidationError) {
-        res.status(400).json({ 
-          error: error.message,
-          field: error.field 
-        });
-      } else if (error instanceof Error && error.message.includes('not found')) {
-        res.status(404).json({ error: error.message });
-      } else {
-        console.error('Error updating server:', error);
-        res.status(500).json({ error: 'Internal server error' });
-      }
-    }
-  };
-
-  /**
-   * Delete a server
-   * DELETE /api/servers/:id
-   */
-  public deleteServer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-      const serverId = req.params.id;
-
-      await this.serverRegistryService.deleteServer(serverId);
-
-      res.status(204).send();
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('not found')) {
-        res.status(404).json({ error: error.message });
-      } else {
-        console.error('Error deleting server:', error);
-        res.status(500).json({ error: 'Internal server error' });
-      }
-    }
-  };
-
-  /**
-   * Get all servers for the authenticated user
+   * List user's servers
    * GET /api/servers
    */
-  public getServers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async listServers(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        res.status(401).json({ error: 'Authentication required' });
-        return;
-      }
+      const serverService = this.container.get<IServerRegistryService>(TYPES.ServerRegistryService);
+      const servers = await serverService.getServersByUser(req.userId!);
 
-      const servers = await this.serverRegistryService.getServersByUser(userId);
-
-      const response: ServerResponse[] = servers.map(server => ({
-        id: server.id,
-        name: server.name,
-        protocol: server.protocol,
-        config: server.config,
-        namespace: server.namespace,
-        status: server.status,
-        lastHealthCheck: server.lastHealthCheck.toISOString(),
-        createdAt: server.createdAt.toISOString(),
-        updatedAt: server.updatedAt.toISOString(),
-      }));
-
-      res.json(response);
+      res.json({
+        servers: servers.map(server => ({
+          serverId: server.id,
+          name: server.name,
+          protocol: server.protocol,
+          namespace: server.namespace,
+          status: server.status,
+          lastHealthCheck: server.lastHealthCheck,
+          createdAt: server.createdAt
+        }))
+      });
     } catch (error) {
-      console.error('Error getting servers:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('List servers error:', error);
+      res.status(500).json({
+        error: {
+          code: 'FETCH_FAILED',
+          message: 'Failed to list servers'
+        }
+      });
     }
-  };
+  }
 
   /**
-   * Get a specific server by ID
-   * GET /api/servers/:id
+   * Get server details
+   * GET /api/servers/:serverId
    */
-  public getServer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async getServer(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const serverId = req.params.id;
+      const { serverId } = req.params;
 
-      const server = await this.serverRegistryService.getServerById(serverId);
+      const serverService = this.container.get<IServerRegistryService>(TYPES.ServerRegistryService);
+      const server = await serverService.getServerById(serverId);
 
       if (!server) {
-        res.status(404).json({ error: 'Server not found' });
+        res.status(404).json({
+          error: {
+            code: 'SERVER_NOT_FOUND',
+            message: 'Server not found'
+          }
+        });
         return;
       }
 
-      const response: ServerResponse = {
-        id: server.id,
+      // Hide sensitive env variables
+      const sanitizedConfig = JSON.parse(JSON.stringify(server.config));
+      if (sanitizedConfig.stdio?.env) {
+        Object.keys(sanitizedConfig.stdio.env).forEach(key => {
+          sanitizedConfig.stdio.env[key] = '***hidden***';
+        });
+      }
+
+      res.json({
+        serverId: server.id,
         name: server.name,
         protocol: server.protocol,
-        config: server.config,
+        config: sanitizedConfig,
         namespace: server.namespace,
         status: server.status,
-        lastHealthCheck: server.lastHealthCheck.toISOString(),
-        createdAt: server.createdAt.toISOString(),
-        updatedAt: server.updatedAt.toISOString(),
-      };
-
-      res.json(response);
+        lastHealthCheck: server.lastHealthCheck,
+        createdAt: server.createdAt,
+        updatedAt: server.updatedAt
+      });
     } catch (error) {
-      console.error('Error getting server:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Get server error:', error);
+      res.status(500).json({
+        error: {
+          code: 'FETCH_FAILED',
+          message: 'Failed to fetch server'
+        }
+      });
     }
-  };
+  }
+
+  /**
+   * Update server
+   * PUT /api/servers/:serverId
+   */
+  async updateServer(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { serverId } = req.params;
+      const updates = req.body;
+
+      const serverService = this.container.get<IServerRegistryService>(TYPES.ServerRegistryService);
+      const server = await serverService.updateServer(serverId, updates);
+
+      res.json({
+        serverId: server.id,
+        name: server.name,
+        status: server.status,
+        updatedAt: server.updatedAt
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        res.status(404).json({
+          error: {
+            code: 'SERVER_NOT_FOUND',
+            message: 'Server not found'
+          }
+        });
+        return;
+      }
+
+      console.error('Update server error:', error);
+      res.status(500).json({
+        error: {
+          code: 'UPDATE_FAILED',
+          message: 'Failed to update server'
+        }
+      });
+    }
+  }
+
+  /**
+   * Delete server
+   * DELETE /api/servers/:serverId
+   */
+  async deleteServer(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { serverId } = req.params;
+
+      const serverService = this.container.get<IServerRegistryService>(TYPES.ServerRegistryService);
+      await serverService.deleteServer(serverId);
+
+      res.status(204).send();
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        res.status(404).json({
+          error: {
+            code: 'SERVER_NOT_FOUND',
+            message: 'Server not found'
+          }
+        });
+        return;
+      }
+
+      console.error('Delete server error:', error);
+      res.status(500).json({
+        error: {
+          code: 'DELETE_FAILED',
+          message: 'Failed to delete server'
+        }
+      });
+    }
+  }
+
+  /**
+   * Get server health
+   * GET /api/servers/:serverId/health
+   */
+  async getServerHealth(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { serverId } = req.params;
+
+      const routerService = this.container.get<IRouterService>(TYPES.RouterService);
+      const health = await routerService.getServerHealth(serverId);
+
+      res.json({
+        serverId: health.serverId,
+        status: health.status,
+        lastCheck: health.lastCheck,
+        responseTime: health.responseTime,
+        error: health.error
+      });
+    } catch (error) {
+      console.error('Get server health error:', error);
+      res.status(500).json({
+        error: {
+          code: 'HEALTH_CHECK_FAILED',
+          message: 'Failed to check server health'
+        }
+      });
+    }
+  }
+
+  /**
+   * Get server tools
+   * GET /api/servers/:serverId/tools
+   */
+  async getServerTools(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { serverId } = req.params;
+
+      // TODO: Implement get tools from server
+      // This would use RouterService to get tools from the server
+      
+      res.json({
+        tools: [],
+        message: 'Tool listing not yet implemented'
+      });
+    } catch (error) {
+      console.error('Get server tools error:', error);
+      res.status(500).json({
+        error: {
+          code: 'FETCH_FAILED',
+          message: 'Failed to fetch server tools'
+        }
+      });
+    }
+  }
+
+  /**
+   * Register server from marketplace template
+   * POST /api/servers/from-marketplace
+   */
+  async registerFromMarketplace(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { marketplaceId, name, namespace, env } = req.body;
+
+      if (!marketplaceId || !name || !env) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_INPUT',
+            message: 'marketplaceId, name, and env are required'
+          }
+        });
+        return;
+      }
+
+      // Get marketplace template
+      // This will be implemented in MarketplaceService
+      // For now, return a placeholder
+
+      res.status(201).json({
+        serverId: 'temp-id',
+        name,
+        message: 'Marketplace integration coming in Task 15'
+      });
+    } catch (error) {
+      console.error('Register from marketplace error:', error);
+      res.status(500).json({
+        error: {
+          code: 'REGISTRATION_FAILED',
+          message: 'Failed to register server from marketplace'
+        }
+      });
+    }
+  }
 }

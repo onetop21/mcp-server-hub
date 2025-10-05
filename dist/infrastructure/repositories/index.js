@@ -18,3 +18,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./UserRepository"), exports);
 __exportStar(require("./ServerRepository"), exports);
 __exportStar(require("./ApiKeyRepository"), exports);
+__exportStar(require("./ServerGroupRepository"), exports);
+__exportStar(require("./EndpointRepository"), exports);

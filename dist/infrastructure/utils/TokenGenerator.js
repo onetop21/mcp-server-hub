@@ -68,6 +68,12 @@ class TokenGenerator {
         return `mcp_${uuid}`;
     }
     /**
+     * Generate a UUID
+     */
+    generateUuid() {
+        return (0, uuid_1.v4)();
+    }
+    /**
      * Calculate expiration date from duration string
      */
     calculateExpirationDate(duration) {

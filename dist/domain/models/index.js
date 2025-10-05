@@ -14,11 +14,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// User models
 __exportStar(require("./User"), exports);
-// API Key models
 __exportStar(require("./ApiKey"), exports);
-// Server models
-__exportStar(require("./Server"), exports);
-// Endpoint models
+__exportStar(require("./MarketplaceServer"), exports);
 __exportStar(require("./Endpoint"), exports);
+__exportStar(require("./Server"), exports);
