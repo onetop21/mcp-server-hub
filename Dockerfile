@@ -1,5 +1,5 @@
-# Multi-stage build for MCP Hub Router
-# Task 22: Deployment configuration
+# Multi-stage Dockerfile for MCP Hub Router
+# Task 24: Production Deployment
 
 # Stage 1: Build
 FROM node:18-alpine AS builder
@@ -8,13 +8,12 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY tsconfig.json ./
 
 # Install dependencies
 RUN npm ci --legacy-peer-deps
 
 # Copy source code
-COPY src ./src
+COPY . .
 
 # Build TypeScript
 RUN npm run build
@@ -24,10 +23,6 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
 # Copy package files
 COPY package*.json ./
 
@@ -35,12 +30,12 @@ COPY package*.json ./
 RUN npm ci --only=production --legacy-peer-deps && \
     npm cache clean --force
 
-# Copy built application from builder
+# Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
-# Copy necessary files
-COPY docs ./docs
-COPY README.md ./
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
 # Change ownership
 RUN chown -R nodejs:nodejs /app
@@ -57,4 +52,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start application
 CMD ["node", "dist/index.js"]
-

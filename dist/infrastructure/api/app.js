@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createApp = void 0;
 const express_1 = __importDefault(require("express"));
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const userRoutes_1 = require("./routes/userRoutes");
 const serverRoutes_1 = require("./routes/serverRoutes");
 const marketplaceRoutes_1 = require("./routes/marketplaceRoutes");
@@ -12,6 +13,7 @@ const groupRoutes_1 = require("./routes/groupRoutes");
 const endpointRoutes_1 = require("./routes/endpointRoutes");
 const mcpRoutes_1 = require("./routes/mcpRoutes");
 const healthRoutes_1 = require("./routes/healthRoutes");
+const swagger_1 = require("./swagger");
 /**
  * Create Express Application
  *
@@ -37,6 +39,16 @@ function createApp(container) {
     app.use((req, res, next) => {
         console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
         next();
+    });
+    // API Documentation
+    app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'MCP Hub Router API Documentation'
+    }));
+    // Swagger JSON spec
+    app.get('/api-docs.json', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(swagger_1.swaggerSpec);
     });
     // Health check routes (no /api prefix)
     app.use('/', (0, healthRoutes_1.healthRoutes)(container));

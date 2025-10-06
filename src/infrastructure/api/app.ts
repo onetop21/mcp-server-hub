@@ -1,4 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
+import swaggerUi from 'swagger-ui-express';
 import { DIContainer } from '../di/container';
 import { userRoutes } from './routes/userRoutes';
 import { serverRoutes } from './routes/serverRoutes';
@@ -7,6 +8,7 @@ import { groupRoutes } from './routes/groupRoutes';
 import { endpointRoutes } from './routes/endpointRoutes';
 import { mcpRoutes } from './routes/mcpRoutes';
 import { healthRoutes } from './routes/healthRoutes';
+import { swaggerSpec } from './swagger';
 
 /**
  * Create Express Application
@@ -38,6 +40,18 @@ export function createApp(container: DIContainer): Express {
   app.use((req: Request, res: Response, next: NextFunction) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
     next();
+  });
+
+  // API Documentation
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'MCP Hub Router API Documentation'
+  }));
+
+  // Swagger JSON spec
+  app.get('/api-docs.json', (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
   });
 
   // Health check routes (no /api prefix)
