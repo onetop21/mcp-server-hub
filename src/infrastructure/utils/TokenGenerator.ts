@@ -27,12 +27,17 @@ export class TokenGenerator {
   /**
    * Verify and decode a JWT token
    */
-  verifyJwtToken(token: string): { userId: string; iat: number } | null {
+  verifyJwtToken(token: string): { userId: string; iat: number; exp?: number } | null {
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as any;
+      const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
+      if (!decoded || typeof decoded.userId !== 'string') {
+        return null;
+      }
+
       return {
         userId: decoded.userId,
-        iat: decoded.iat,
+        iat: decoded.iat as number,
+        exp: decoded.exp,
       };
     } catch (error) {
       return null;

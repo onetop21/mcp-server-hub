@@ -27,6 +27,11 @@ export interface IRouterService {
   getServerHealth(serverId: string): Promise<ServerHealth>;
 
   /**
+   * Get tools available on a specific server
+   */
+  getServerTools(serverId: string): Promise<{ tools: ToolDefinition[] }>;
+
+  /**
    * Get health status for all servers in a group
    */
   getGroupHealth(groupId: string): Promise<ServerHealth[]>;

@@ -110,7 +110,8 @@ export class UserController {
       res.json({
         userId: token.userId,
         username: user?.username || '',
-        apiKey: token.token,
+        token: token.token,
+        apiKey: token.token, // Backwards compatibility for clients expecting apiKey
         expiresAt: token.expiresAt
       });
     } catch (error) {
@@ -166,27 +167,54 @@ export class UserController {
    */
   async generateApiKey(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { name, expiresInDays } = req.body;
+      const { name, expiresInDays, permissions } = req.body as {
+        name?: string;
+        expiresInDays?: number;
+        permissions?: Array<{ resource: string; actions: string[] }>;
+      };
 
       const userService = this.container.get<IUserManagementService>(TYPES.UserManagementService);
+      const finalPermissions = Array.isArray(permissions) && permissions.length > 0
+        ? permissions
+        : [{ resource: '*', actions: ['*'] }];
+      const expiresIn = typeof expiresInDays === 'number' && expiresInDays > 0
+        ? `${expiresInDays}d`
+        : undefined;
+
       const apiKey = await userService.generateApiKey(
         req.userId!,
-        name || 'Default Key'
+        finalPermissions as any,
+        name || 'Default Key',
+        expiresIn
       );
 
       res.status(201).json({
-        keyId: apiKey.id,
-        apiKey: apiKey.key,
-        name: apiKey.name,
-        expiresAt: apiKey.expiresAt,
-        createdAt: apiKey.createdAt
+        apiKey: {
+          id: apiKey.id,
+          name: apiKey.name,
+          key: apiKey.key,
+          createdAt: apiKey.createdAt,
+          lastUsed: apiKey.lastUsedAt || null,
+        }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Generate API key error:', error);
+      const msg = (error?.message || '').toString().toLowerCase();
+      if (msg.includes('already exists')) {
+        res.status(409).json({
+          error: {
+            code: 'DUPLICATE_KEY_NAME',
+            message: 'API key name already exists',
+            details: error?.message || String(error)
+          }
+        });
+        return;
+      }
       res.status(500).json({
         error: {
           code: 'KEY_GENERATION_FAILED',
-          message: 'Failed to generate API key'
+          message: 'Failed to generate API key',
+          details: error?.message || String(error)
         }
       });
     }
@@ -202,12 +230,12 @@ export class UserController {
       const keys = await userService.getUserApiKeys(req.userId!);
 
       res.json({
-        keys: keys.map(key => ({
-          keyId: key.id,
-          name: key.name,
-          createdAt: key.createdAt,
-          expiresAt: key.expiresAt,
-          lastUsedAt: key.lastUsedAt
+        apiKeys: keys.map(k => ({
+          id: k.id,
+          name: k.name,
+          key: (k.key || '').toString().substring(0, 12),
+          createdAt: k.createdAt,
+          lastUsed: k.lastUsedAt || null,
         }))
       });
     } catch (error) {

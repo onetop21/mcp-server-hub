@@ -34,6 +34,7 @@ export function serverRoutes(container: DIContainer): Router {
   // Health and tools
   router.get('/:serverId/health', controller.getServerHealth.bind(controller));
   router.get('/:serverId/tools', controller.getServerTools.bind(controller));
+  router.post('/:serverId/test', controller.testServerConnection.bind(controller));
 
   // Marketplace integration
   router.post('/from-marketplace', controller.registerFromMarketplace.bind(controller));

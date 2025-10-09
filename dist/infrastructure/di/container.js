@@ -64,10 +64,14 @@ class DIContainer {
             return;
         }
         try {
+            console.log('Starting DI Container initialization...');
             // Initialize database connection
+            console.log('Initializing database connection...');
             const dbConfig = DatabaseConfig_1.DatabaseConfigManager.getConfig();
+            console.log('Database config:', { host: dbConfig.host, port: dbConfig.port, database: dbConfig.database, username: dbConfig.username });
             const dbConnection = new connection_1.DatabaseConnection(dbConfig);
             await dbConnection.connect();
+            console.log('Database connection established successfully');
             this.bind(types_1.TYPES.DatabaseConnection, dbConnection);
             // Initialize Redis connection (optional - gracefully handle failures)
             let redisConnection;
@@ -257,55 +261,12 @@ exports.DIContainer = DIContainer;
 /**
  * Create and initialize DI container (non-async version for sync usage)
  */
-function createContainer() {
+async function createContainer() {
+    console.log('createContainer() called');
     const container = DIContainer.getInstance();
-    // Create mock instances for now
-    const dbConnection = new connection_1.DatabaseConnection({
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5432'),
-        database: process.env.DB_NAME || 'mcp_hub',
-        username: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || 'postgres',
-        maxConnections: 10
-    });
-    const userRepository = new repositories_1.UserRepository(dbConnection);
-    const apiKeyRepository = new repositories_1.ApiKeyRepository(dbConnection);
-    const serverRepository = new repositories_1.ServerRepository(dbConnection);
-    const serverGroupRepository = new repositories_1.ServerGroupRepository(dbConnection);
-    const endpointRepository = new repositories_1.EndpointRepository(dbConnection);
-    const passwordHasher = new utils_1.PasswordHasher();
-    const tokenGenerator = new utils_1.TokenGenerator();
-    const rateLimiter = new utils_1.RateLimiter();
-    const permissionService = new PermissionService_1.PermissionService();
-    const userManagementService = new UserManagementService_1.UserManagementService(userRepository, apiKeyRepository, passwordHasher, tokenGenerator, rateLimiter, undefined, // No usage tracking for now
-    permissionService);
-    const serverRegistryService = new ServerRegistryService_1.ServerRegistryService(serverRepository, serverGroupRepository);
-    const endpointService = new EndpointService_1.EndpointService(endpointRepository, serverGroupRepository, apiKeyRepository, tokenGenerator);
-    const protocolAdapterService = new ProtocolAdapterService_1.ProtocolAdapterService();
-    const routerService = new RouterService_1.RouterService(serverRepository, endpointRepository, serverGroupRepository, protocolAdapterService);
-    // Initialize MarketplaceRepository and MarketplaceService
-    const { MarketplaceRepository } = require('../repositories/MarketplaceRepository');
-    const marketplaceRepository = new MarketplaceRepository(dbConnection);
-    const { MarketplaceService } = require('../../domain/services/MarketplaceService');
-    const marketplaceService = new MarketplaceService(marketplaceRepository, userManagementService);
-    // Bind services
-    container.bind(types_1.TYPES.DatabaseConnection, dbConnection);
-    container.bind(types_1.TYPES.UserRepository, userRepository);
-    container.bind(types_1.TYPES.ApiKeyRepository, apiKeyRepository);
-    container.bind(types_1.TYPES.ServerRepository, serverRepository);
-    container.bind(types_1.TYPES.GroupRepository, serverGroupRepository);
-    container.bind(types_1.TYPES.EndpointRepository, endpointRepository);
-    container.bind(types_1.TYPES.MarketplaceRepository, marketplaceRepository);
-    container.bind(types_1.TYPES.PasswordHasher, passwordHasher);
-    container.bind(types_1.TYPES.TokenGenerator, tokenGenerator);
-    container.bind(types_1.TYPES.RateLimiter, rateLimiter);
-    container.bind(types_1.TYPES.PermissionService, permissionService);
-    container.bind(types_1.TYPES.UserManagementService, userManagementService);
-    container.bind(types_1.TYPES.ServerRegistryService, serverRegistryService);
-    container.bind(types_1.TYPES.EndpointService, endpointService);
-    container.bind(types_1.TYPES.ProtocolAdapterService, protocolAdapterService);
-    container.bind(types_1.TYPES.RouterService, routerService);
-    container.bind(types_1.TYPES.MarketplaceService, marketplaceService);
+    console.log('DIContainer instance obtained');
+    await container.initialize();
+    console.log('DIContainer initialized');
     return container;
 }
 exports.createContainer = createContainer;

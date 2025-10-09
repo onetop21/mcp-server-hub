@@ -31,4 +31,5 @@ export interface AuthToken {
   token: string;
   expiresAt: Date;
   userId: string;
+  apiKey?: string; // Add optional API key field
 }

@@ -10,10 +10,13 @@ interface ServerRow {
   user_id: string;
   name: string;
   protocol: string;
-  config: any; // JSONB
+  // Some schemas use 'config' (JSONB), older schemas use 'metadata' (JSONB)
+  config?: any;
+  metadata?: any;
   namespace: string | null;
   status: string;
-  last_health_check: Date | null;
+  // Some schemas may not have last_health_check
+  last_health_check?: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -35,10 +38,10 @@ export class ServerRepository extends BaseRepository<ServerRow> {
       userId: row.user_id,
       name: row.name,
       protocol: row.protocol as ServerProtocol,
-      config: row.config as ServerConfig,
+      config: ((row.config ?? row.metadata) as ServerConfig) || ({} as ServerConfig),
       namespace: row.namespace || undefined,
       status: row.status as ServerStatus,
-      lastHealthCheck: row.last_health_check || new Date(),
+      lastHealthCheck: (row.last_health_check ?? null) || new Date(),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -56,7 +59,7 @@ export class ServerRepository extends BaseRepository<ServerRow> {
     if (server.config !== undefined) row.config = server.config;
     if (server.namespace !== undefined) row.namespace = server.namespace;
     if (server.status !== undefined) row.status = server.status;
-    if (server.lastHealthCheck !== undefined) row.last_health_check = server.lastHealthCheck;
+    if (server.lastHealthCheck !== undefined) row.last_health_check = server.lastHealthCheck as any;
     if (server.createdAt !== undefined) row.created_at = server.createdAt;
     if (server.updatedAt !== undefined) row.updated_at = server.updatedAt;
 
@@ -116,8 +119,17 @@ export class ServerRepository extends BaseRepository<ServerRow> {
    * Create a new server
    */
   async createServer(serverData: Omit<RegisteredServer, 'id' | 'createdAt' | 'updatedAt'>): Promise<RegisteredServer> {
-    const dbRow = this.toDbRow(serverData);
-    const createdRow = await super.create(dbRow);
+    // Insert using legacy-compatible schema (metadata JSONB), which works for our current DB.
+    const minimalRow: Partial<ServerRow> = {
+      user_id: serverData.userId,
+      name: serverData.name,
+      protocol: serverData.protocol,
+      metadata: serverData.config as any,
+      namespace: (serverData.namespace ?? null) as any,
+      status: serverData.status,
+      created_at: new Date(),
+    };
+    const createdRow = await super.create(minimalRow);
     return this.toDomainModel(createdRow);
   }
 

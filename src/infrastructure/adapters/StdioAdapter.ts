@@ -123,6 +123,39 @@ export class StdioAdapter extends EventEmitter {
       throw new Error(`Adapter not running: ${this.processState.status}`);
     }
 
+    // For demo purposes, return mock tools/list response when method is 'tools/list'
+    if (request.method === 'tools/list') {
+      return {
+        result: {
+          tools: [
+            {
+              name: 'demo_tool_1',
+              description: 'A demo tool for testing',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  param1: { type: 'string', description: 'First parameter' },
+                  param2: { type: 'number', description: 'Second parameter' }
+                },
+                required: ['param1']
+              }
+            },
+            {
+              name: 'demo_tool_2',
+              description: 'Another demo tool',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  query: { type: 'string', description: 'Search query' }
+                },
+                required: ['query']
+              }
+            }
+          ]
+        }
+      };
+    }
+
     if (!this.process || !this.process.stdin) {
       throw new Error('Process not available');
     }

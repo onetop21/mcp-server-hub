@@ -1,151 +1,162 @@
-# MCP Hub Router
+# MCP Hub Router - Mono-repo
 
-Multi-tenant MCP server hub with protocol adapters and routing capabilities.
+MCP (Model Context Protocol) 서버들을 관리하고 라우팅하는 허브 시스템입니다.
 
-## WSL Development Environment Setup
+## 📁 프로젝트 구조
 
-This project is configured to work in WSL (Windows Subsystem for Linux) environment.
-
-### Prerequisites
-
-- Node.js (v14+ recommended)
-- npm or yarn
-- WSL environment
-
-### Installation
-
-```bash
-# Install dependencies
-npm install
-
-# Verify setup
-node verify-setup.js
+```
+mcp-server-hub/
+├── src/                    # 백엔드 소스 코드
+│   ├── domain/            # 도메인 로직
+│   ├── infrastructure/    # 인프라스트럭처
+│   └── index.ts          # 진입점
+├── frontend/              # 프론트엔드 (React + TypeScript)
+│   ├── src/
+│   │   ├── pages/        # 페이지 컴포넌트
+│   │   ├── stores/       # 상태 관리 (Zustand)
+│   │   └── lib/          # API 클라이언트
+│   ├── package.json
+│   └── vite.config.ts
+├── docker-compose.yml     # Docker 서비스 정의
+├── Dockerfile            # 백엔드 Docker 이미지
+├── package.json          # 루트 package.json
+└── README.md
 ```
 
-### Development Commands
+## 🚀 빠른 시작
+
+### 1. 전체 개발 환경 실행
 
 ```bash
-# Build the project
-npm run build
+# 모든 의존성 설치
+npm install
+npm run frontend:install
 
-# Run type checking only
-npm run build:check
+# 백엔드와 프론트엔드를 동시에 실행
+npm run dev:all
+```
 
-# Run in development mode
+### 2. 개별 실행
+
+#### 백엔드만 실행
+```bash
 npm run dev
+```
 
-# Run tests
+#### 프론트엔드만 실행
+```bash
+npm run frontend:dev
+```
+
+### 3. Docker로 백엔드 실행
+```bash
+docker-compose up -d
+```
+
+## 🌐 접속 URL
+
+- **백엔드 API**: http://localhost:3000
+- **프론트엔드**: http://localhost:5173
+- **API 문서**: http://localhost:3000/api-docs
+
+## 📋 주요 기능
+
+### 백엔드 (Node.js + TypeScript + Express)
+- ✅ 사용자 관리 (회원가입, 로그인, API 키)
+- ✅ MCP 서버 등록 및 관리
+- ✅ 마켓플레이스 (서버 템플릿)
+- ✅ MCP 프로토콜 엔드포인트
+- ✅ 데이터베이스 연결 (PostgreSQL)
+- ✅ Redis 캐싱 및 Rate Limiting
+
+### 프론트엔드 (React + TypeScript + Vite)
+- ✅ 로그인/회원가입 페이지
+- ✅ 대시보드 (서버 현황)
+- ✅ 서버 관리 (CRUD)
+- ✅ 마켓플레이스 브라우징
+- ✅ API 키 관리
+- ✅ 반응형 UI (Tailwind CSS)
+
+## 🛠️ 개발 명령어
+
+```bash
+# 전체 빌드
+npm run build:all
+
+# 프론트엔드 빌드
+npm run frontend:build
+
+# 테스트 실행
 npm test
 
-# Start production server
-npm start
+# 데이터베이스 마이그레이션
+npm run db:migrate
 ```
 
-### Project Structure
+## 🔧 환경 설정
 
-```
-src/
-├── domain/
-│   ├── models/          # Domain models (User, Server, ApiKey, etc.)
-│   └── services/        # Service interfaces
-├── infrastructure/
-│   └── di/             # Dependency injection container
-└── index.ts            # Application entry point
+### 환경 변수 (.env)
+```env
+# 데이터베이스
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=mcp_hub_router
+DB_USER=postgres
+DB_PASSWORD=password
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# JWT
+JWT_SECRET=your-secret-key
+
+# 로그 레벨
+LOG_LEVEL=debug
 ```
 
-### 🎯 Quick Start
+## 📦 의존성
+
+### 백엔드
+- Express.js (웹 프레임워크)
+- TypeScript (타입 안전성)
+- PostgreSQL (데이터베이스)
+- Redis (캐싱)
+- InversifyJS (의존성 주입)
+
+### 프론트엔드
+- React 18 (UI 라이브러리)
+- TypeScript (타입 안전성)
+- Vite (빌드 도구)
+- Tailwind CSS (스타일링)
+- Zustand (상태 관리)
+- React Router (라우팅)
+
+## 🐳 Docker
 
 ```bash
-# 1. Install dependencies
-npm install
+# 모든 서비스 실행
+docker-compose up -d
 
-# 2. Build
-npm run build
+# 로그 확인
+docker-compose logs -f
 
-# 3. Start server
-npm run dev
+# 서비스 중지
+docker-compose down
 ```
 
-Server will start on `http://localhost:3000`
+## 📝 API 문서
 
-👉 [Quick Start Guide](./docs/Quick-Start.md) | [API Reference](./docs/API-Reference.md)
+Swagger UI를 통해 API 문서를 확인할 수 있습니다:
+http://localhost:3000/api-docs
 
-## Key Features
+## 🤝 기여하기
 
-- **Individual Server Management**: Each user runs their own MCP servers with personal credentials
-- **Multi-Project Reusability**: One server setup, use across multiple projects
-- **Protocol Adapters**: STDIO, SSE, and HTTP protocol support
-- **Stateless Design**: Simple, predictable, and maintainable architecture
-- **API Management**: API key generation and rate limiting
-- **Server Registry**: Personal MCP server registration and management
-- **Namespace Routing**: Organized tool routing with namespace support
+1. 이슈 생성 또는 기존 이슈 확인
+2. 기능 브랜치 생성
+3. 코드 작성 및 테스트
+4. Pull Request 생성
 
-### Development Status
+## 📄 라이선스
 
-✅ **Tasks 1-10 Complete**: Core functionality implemented
-- TypeScript project initialization
-- Core domain models (User, Server, ApiKey, Endpoint)
-- Service interfaces and implementations
-- Database schema and repositories
-- User management and authentication
-- Usage tracking and rate limiting
-- Server registry and metadata management
-- Server groups and endpoint management
-- Protocol adapters (STDIO, SSE, HTTP)
-- Tool routing and namespace system
-
-✅ **Task 11 Modified**: Simplified architecture (Load balancing deferred)
-- Load balancing code implemented but **disabled by default** for simplicity
-- Focus on individual user servers with personal credentials
-- Stateless MCP server design for easy maintenance
-- Load balancing can be enabled in future for scale-out scenarios
-- See `docs/Architecture-Simplified.md` for details
-
-### Architecture Philosophy
-
-**Simplicity First:** MCP Hub Router prioritizes simplicity and maintainability over complex features.
-
-- 👤 **Individual Servers**: Each user runs their own MCP servers
-- 🔑 **Personal Credentials**: Servers use user's own API keys/tokens
-- ♻️ **Multi-Project Reuse**: One server → multiple projects
-- 📦 **Stateless Design**: No caching, predictable behavior
-- 🚀 **Future-Proof**: Can enable advanced features when needed
-
-See `docs/Architecture-Simplified.md` for detailed reasoning.
-
-🎉 **Completed Tasks**:
-- Task 1-11: Core infrastructure ✅
-- Task 12: User Management API ✅
-- Task 13: Server Management API ✅
-- Task 14: MCP protocol endpoints ✅
-- Task 15: Marketplace API ✅
-- Task 16: Health/Monitoring API ✅
-- Task 17: Dynamic Configuration Management ✅
-- Task 18: Logging & Debugging System ✅
-- Task 19: Backup & Restore System ✅
-- Task 20: Web Dashboard Planning ✅
-
-**📊 Progress: 20/24 Tasks Complete (83%)**
-
-✅ Task 1-20: Core features complete
-⏳ Task 21: API Documentation (Swagger/OpenAPI)
-⏳ Task 22: Integration Tests
-⏳ Task 23: Performance Optimization
-⏳ Task 24: Production Deployment
-
-**Status: Beta Ready! 🚀**
-
-### WSL-Specific Notes
-
-- All commands should be run within the WSL environment
-- File paths use Unix-style separators
-- Node.js and npm should be installed within WSL, not Windows
-
-### Troubleshooting
-
-If you encounter issues:
-
-1. Ensure you're running commands in WSL, not Windows PowerShell
-2. Check Node.js version: `node --version`
-3. Verify dependencies: `npm list`
-4. Run setup verification: `node verify-setup.js`
+MIT License

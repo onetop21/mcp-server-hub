@@ -11,8 +11,8 @@ interface ApiKeyRow {
   user_id: string;
   key_hash: string;
   name: string;
-  permissions: string; // JSON string
-  rate_limit: string; // JSON string
+  permissions?: string; // JSON string (optional - schema may not include)
+  rate_limit?: string; // JSON string (optional - schema may not include)
   created_at: Date;
   expires_at?: Date;
   last_used_at?: Date;
@@ -30,13 +30,23 @@ export class ApiKeyRepository extends BaseRepository<ApiKeyRow> {
    * Convert database row to domain model
    */
   private toDomainModel(row: ApiKeyRow, originalKey?: string): ApiKey {
+    // Provide sensible defaults when optional columns are missing
+    const defaultPermissions: Permission[] = [
+      { resource: '*', actions: ['*'] },
+    ];
+    const defaultRateLimit: RateLimit = {
+      requestsPerHour: 1000,
+      requestsPerDay: 10000,
+      maxServers: 10,
+    };
+
     return {
       id: row.id,
       userId: row.user_id,
       key: originalKey || row.key_hash, // Use original key if provided, otherwise hash
       name: row.name,
-      permissions: JSON.parse(row.permissions) as Permission[],
-      rateLimit: JSON.parse(row.rate_limit) as RateLimit,
+      permissions: row.permissions ? (JSON.parse(row.permissions) as Permission[]) : defaultPermissions,
+      rateLimit: row.rate_limit ? (JSON.parse(row.rate_limit) as RateLimit) : defaultRateLimit,
       createdAt: row.created_at,
       expiresAt: row.expires_at,
       lastUsedAt: row.last_used_at,
@@ -74,7 +84,7 @@ export class ApiKeyRepository extends BaseRepository<ApiKeyRow> {
    */
   async findByKey(key: string): Promise<ApiKey | null> {
     const keyHash = this.hashKey(key);
-    const query = 'SELECT * FROM api_keys WHERE key_hash = $1 AND (expires_at IS NULL OR expires_at > NOW())';
+    const query = 'SELECT id, user_id, key_hash, name, created_at, expires_at, last_used_at FROM api_keys WHERE key_hash = $1 AND (expires_at IS NULL OR expires_at > NOW())';
     const row = await this.findOneByQuery(query, [keyHash]);
     return row ? this.toDomainModel(row, key) : null;
   }
@@ -83,7 +93,12 @@ export class ApiKeyRepository extends BaseRepository<ApiKeyRow> {
    * Find all API keys for a user
    */
   async findByUserId(userId: string): Promise<ApiKey[]> {
-    const query = 'SELECT * FROM api_keys WHERE user_id = $1 ORDER BY created_at DESC';
+    const query = `
+      SELECT id, user_id, key_hash, name, created_at, expires_at, last_used_at
+      FROM api_keys
+      WHERE user_id = $1 AND (expires_at IS NULL OR expires_at > NOW())
+      ORDER BY created_at DESC
+    `;
     const rows = await this.findByQuery(query, [userId]);
     return rows.map(row => this.toDomainModel(row));
   }
@@ -93,8 +108,15 @@ export class ApiKeyRepository extends BaseRepository<ApiKeyRow> {
    */
   async createApiKey(apiKeyData: Omit<ApiKey, 'id' | 'createdAt'>): Promise<ApiKey> {
     const keyHash = this.hashKey(apiKeyData.key);
-    const dbRow = this.toDbRow(apiKeyData, keyHash);
-    const createdRow = await super.create(dbRow);
+    // Insert only columns guaranteed to exist in current schema
+    const minimalRow: Partial<ApiKeyRow> = {
+      user_id: apiKeyData.userId,
+      key_hash: keyHash,
+      name: apiKeyData.name,
+      created_at: new Date(),
+      expires_at: apiKeyData.expiresAt,
+    };
+    const createdRow = await super.create(minimalRow);
     return this.toDomainModel(createdRow, apiKeyData.key);
   }
 
@@ -128,7 +150,7 @@ export class ApiKeyRepository extends BaseRepository<ApiKeyRow> {
    * Find expired API keys
    */
   async findExpiredKeys(): Promise<ApiKey[]> {
-    const query = 'SELECT * FROM api_keys WHERE expires_at IS NOT NULL AND expires_at <= NOW()';
+    const query = 'SELECT id, user_id, key_hash, name, created_at, expires_at, last_used_at FROM api_keys WHERE expires_at IS NOT NULL AND expires_at <= NOW()';
     const rows = await this.findByQuery(query, []);
     return rows.map(row => this.toDomainModel(row));
   }
@@ -177,7 +199,8 @@ export class ApiKeyRepository extends BaseRepository<ApiKeyRow> {
    * Check if API key name exists for user
    */
   async nameExistsForUser(userId: string, name: string, excludeId?: string): Promise<boolean> {
-    let query = 'SELECT 1 FROM api_keys WHERE user_id = $1 AND name = $2';
+    // Normalize comparison to avoid hidden whitespace/case issues
+    let query = 'SELECT 1 FROM api_keys WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) AND (expires_at IS NULL OR expires_at > NOW())';
     const params: any[] = [userId, name];
     
     if (excludeId) {

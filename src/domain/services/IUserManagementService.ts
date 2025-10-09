@@ -23,7 +23,7 @@ export interface IUserManagementService {
   /**
    * Generate a new API key for a user
    */
-  generateApiKey(userId: string, permissions: Permission[]): Promise<ApiKey>;
+  generateApiKey(userId: string, permissions: Permission[], name?: string, expiresIn?: string): Promise<ApiKey>;
 
   /**
    * Validate an API key and return user information

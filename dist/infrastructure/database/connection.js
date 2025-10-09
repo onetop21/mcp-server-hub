@@ -17,8 +17,17 @@ class DatabaseConnection {
      */
     async connect() {
         if (this.pool) {
+            console.log('Database connection already exists');
             return;
         }
+        console.log('Creating database connection pool...');
+        console.log('Connection config:', {
+            host: this.config.host,
+            port: this.config.port,
+            database: this.config.database,
+            user: this.config.username,
+            ssl: this.config.ssl
+        });
         this.pool = new pg_1.Pool({
             host: this.config.host,
             port: this.config.port,
@@ -32,6 +41,7 @@ class DatabaseConnection {
         });
         // Test the connection
         try {
+            console.log('Testing database connection...');
             const client = await this.pool.connect();
             await client.query('SELECT 1');
             client.release();

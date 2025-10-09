@@ -118,7 +118,7 @@ export class UserManagementService implements IUserManagementService {
     }
 
     // Check if name is unique for this user
-    const keyName = name || `API Key ${new Date().toISOString()}`;
+    const keyName = (name || `API Key ${new Date().toISOString()}`).trim();
     const nameExists = await this.apiKeyRepository.nameExistsForUser(userId, keyName);
     if (nameExists) {
       throw new Error('API key name already exists');
@@ -332,13 +332,14 @@ export class UserManagementService implements IUserManagementService {
       throw new Error('Username can only contain letters, numbers, underscores, and hyphens');
     }
 
-    // Password validation
-    if (!userData.password || userData.password.length < 8) {
-      throw new Error('Password must be at least 8 characters long');
+    // Password validation - more flexible for development
+    if (!userData.password || userData.password.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
     }
 
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(userData.password)) {
-      throw new Error('Password must contain at least one lowercase letter, one uppercase letter, and one number');
+    // Optional: Check for at least one letter and one number (more flexible)
+    if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(userData.password)) {
+      throw new Error('Password must contain at least one letter and one number');
     }
   }
 

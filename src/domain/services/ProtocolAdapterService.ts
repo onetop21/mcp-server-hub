@@ -199,6 +199,37 @@ export class ProtocolAdapterService implements IProtocolAdapterService {
   }
 
   /**
+   * Get tools from a specific adapter
+   */
+  public async getToolsFromAdapter(adapterId: string): Promise<{ tools: ToolDefinition[] }> {
+    try {
+      const adapter = this.factory.getAdapter(adapterId);
+      if (!adapter) {
+        throw new Error(`Adapter '${adapterId}' not found`);
+      }
+
+      // Send tools/list request to the MCP server
+      const request: McpRequest = {
+        method: 'tools/list',
+        params: {},
+        id: Date.now().toString()
+      };
+
+      const response = await this.sendRequest(adapterId, request);
+
+      if (response.error) {
+        throw new Error(`MCP server error: ${response.error.message}`);
+      }
+
+      const tools = response.result?.tools || [];
+
+      return { tools };
+    } catch (error) {
+      throw new Error(`Failed to get tools from adapter: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
    * Map factory adapter status to service interface status
    */
   private mapAdapterStatus(factoryStatus: AdapterStatus): 'connected' | 'disconnected' | 'error' {

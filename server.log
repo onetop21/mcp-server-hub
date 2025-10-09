@@ -1,0 +1,59 @@
+
+> mcp-hub-router@1.0.0 dev
+> node -r ts-node/register src/index.ts
+
+Starting MCP Hub Router...
+main() function started
+About to initialize DI container...
+Environment variables: {
+  DB_HOST: undefined,
+  DB_PORT: undefined,
+  DB_NAME: undefined,
+  DB_USER: undefined
+}
+About to call createContainer()...
+createContainer function: function
+Creating DI container...
+About to call createContainer()
+createContainer() called
+DIContainer instance obtained
+Starting DI Container initialization...
+Initializing database connection...
+Database config: {
+  host: 'localhost',
+  port: 5432,
+  database: 'mcp_hub_router',
+  username: 'postgres'
+}
+Creating database connection pool...
+Connection config: {
+  host: 'localhost',
+  port: 5432,
+  database: 'mcp_hub_router',
+  user: 'postgres',
+  ssl: false
+}
+Testing database connection...
+Database connection established successfully
+Database connection established successfully
+Redis Client Connected
+Redis Client Ready
+Redis connection established - usage tracking enabled
+DI Container initialized successfully
+DIContainer initialized
+createContainer() completed
+✓ DI Container initialized
+✓ Express app created
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at app.listen (/home/onetop21/workspace/mcp-server-hub/node_modules/express/lib/application.js:635:24)
+    at main (/home/onetop21/workspace/mcp-server-hub/src/index.ts:35:9)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}

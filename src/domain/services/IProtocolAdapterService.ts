@@ -1,5 +1,20 @@
 import { ServerConfig } from '../models';
 
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: ToolParameter[];
+  serverId: string;
+  namespace?: string;
+}
+
+export interface ToolParameter {
+  name: string;
+  type: string;
+  description: string;
+  required: boolean;
+}
+
 export interface IProtocolAdapterService {
   /**
    * Create a protocol adapter for a server
@@ -30,6 +45,11 @@ export interface IProtocolAdapterService {
    * Get all active adapters
    */
   getActiveAdapters(): Promise<ProtocolAdapter[]>;
+
+  /**
+   * Get tools from a specific adapter
+   */
+  getToolsFromAdapter(adapterId: string): Promise<{ tools: ToolDefinition[] }>;
 }
 
 export interface ProtocolAdapter {

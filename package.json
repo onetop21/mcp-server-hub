@@ -17,7 +17,17 @@
     "db:migrate": "npm run db migrate",
     "db:rollback": "npm run db rollback",
     "db:status": "npm run db status",
-    "db:test": "npm run db test"
+    "db:test": "npm run db test",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:install": "cd frontend && npm install",
+    "dev:all": "concurrently \"npm run dev\" \"npm run frontend:dev\"",
+    "build:all": "npm run build && npm run frontend:build",
+    "test:build": "node tests/build-test.js",
+    "test:integration": "node tests/integration-test.js",
+    "test:quick": "node tests/quick-test.js",
+    "test:verify": "node tests/verify-setup.js",
+    "test:all": "node tests/test-runner.js"
   },
   "keywords": [
     "mcp",
@@ -39,6 +49,7 @@
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "concurrently": "^8.2.2",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "supertest": "^7.1.4",

@@ -257,11 +257,54 @@ export class RouterService implements IRouterService {
       return [];
     }
 
-    const healthPromises = group.serverIds.map(serverId => 
+    const healthPromises = group.serverIds.map(serverId =>
       this.getServerHealth(serverId)
     );
 
     return Promise.all(healthPromises);
+  }
+
+  /**
+   * Get tools available on a specific server
+   */
+  async getServerTools(serverId: string): Promise<{ tools: ToolDefinition[] }> {
+    const server = await this.serverRepository.findServerById(serverId);
+    if (!server) {
+      throw new Error(`Server with ID '${serverId}' not found`);
+    }
+
+    if (server.status !== ServerStatus.ACTIVE) {
+      throw new Error(`Server '${serverId}' is not active`);
+    }
+
+    try {
+      // Get tools from the server via protocol adapter
+      const adapter = this.protocolAdapterService.getAdapterByServerId(serverId);
+      if (!adapter) {
+        throw new Error(`No active adapter found for server '${serverId}'`);
+      }
+
+      // Use protocol adapter to get tools
+      const toolsResult = await this.protocolAdapterService.getToolsFromAdapter(adapter.id);
+
+      const tools: ToolDefinition[] = (toolsResult.tools || []).map((tool: any) => ({
+        name: tool.name,
+        description: tool.description || '',
+        parameters: tool.inputSchema?.properties ? Object.entries(tool.inputSchema.properties).map(([name, schema]: [string, any]) => ({
+          name,
+          type: schema.type || 'string',
+          description: schema.description || '',
+          required: tool.inputSchema?.required?.includes(name) || false
+        })) : [],
+        serverId: serverId,
+        namespace: server.namespace
+      }));
+
+      return { tools };
+    } catch (error) {
+      console.error(`Failed to get tools from server '${serverId}':`, error);
+      throw new Error(`Failed to communicate with server: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
