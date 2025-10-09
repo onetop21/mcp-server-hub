@@ -27,7 +27,11 @@
     "test:integration": "node tests/integration-test.js",
     "test:quick": "node tests/quick-test.js",
     "test:verify": "node tests/verify-setup.js",
-    "test:all": "node tests/test-runner.js"
+    "test:all": "node tests/test-runner.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
   },
   "keywords": [
     "mcp",
@@ -39,6 +43,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",

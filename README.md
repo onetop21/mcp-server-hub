@@ -91,6 +91,18 @@ npm test
 
 # 데이터베이스 마이그레이션
 npm run db:migrate
+
+# E2E 테스트 실행 (Playwright)
+npm run test:e2e
+
+# E2E 테스트 UI 모드 실행
+npm run test:e2e:ui
+
+# E2E 테스트 디버그 모드 실행
+npm run test:e2e:debug
+
+# 종합 테스트 실행 (모든 테스트 포함)
+QA/e2e/run-all-tests.sh
 ```
 
 ## 🔧 환경 설정
@@ -156,6 +168,40 @@ http://localhost:3000/api-docs
 2. 기능 브랜치 생성
 3. 코드 작성 및 테스트
 4. Pull Request 생성
+
+## 🧪 QA 및 테스트
+
+프로젝트는 포괄적인 테스트 스위트를 포함합니다:
+
+### 테스트 범위
+- **단위 테스트**: Jest를 사용한 백엔드 로직 테스트
+- **통합 테스트**: API 엔드포인트 및 데이터베이스 연동 테스트
+- **E2E 테스트**: Playwright를 사용한 브라우저 기반 사용자 시나리오 테스트
+
+### E2E 테스트 시나리오
+- ✅ 사용자 인증 (회원가입, 로그인, 세션 유지)
+- ✅ 대시보드 접근 및 서버 목록 표시
+- ✅ 서버 관리 (등록, 수정, 삭제, 헬스체크)
+- ✅ 라우팅 규칙 설정 및 우선순위 평가
+- ✅ MCP 프로토콜 엔드포인트 통신
+
+### 테스트 실행 방법
+
+```bash
+# 기본 E2E 테스트 실행
+npm run test:e2e
+
+# UI 모드로 테스트 실행 (인터랙티브)
+npm run test:e2e:ui
+
+# 디버그 모드로 테스트 실행
+npm run test:e2e:debug
+
+# 모든 테스트 실행 (단위 + 통합 + E2E)
+./QA/e2e/run-all-tests.sh
+```
+
+테스트 결과는 `QA/e2e/test-results/` 디렉토리에 저장됩니다.
 
 ## 📄 라이선스
 
